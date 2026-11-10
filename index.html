@@ -26,6 +26,8 @@
 
       <div class="topbar-right">
         <div class="live-indicator"><i></i> LIVE</div>
+        <button id="langToggle" class="icon-button pill-toggle" type="button">UA</button>
+        <button id="timeToggle" class="icon-button pill-toggle" type="button">24H</button>
         <button class="icon-button" id="themeToggle" type="button" aria-label="Змінити тему">☼</button>
       </div>
     </header>
@@ -67,14 +69,13 @@
             <button type="button" class="view-button active" data-view="cards" aria-pressed="true" title="Картки">▦</button>
             <button type="button" class="view-button" data-view="list" aria-pressed="false" title="Список">☷</button>
           </div>
+          <button id="filtersToggle" class="reset-filters-button" type="button" aria-expanded="false" aria-controls="filtersPanel"><span>☰</span> Фільтри</button>
           <button id="templateButton" class="reset-filters-button" type="button">⇄ Шаблон</button>
           <button id="addLocationButton" class="primary-button" type="button">
             <span>＋</span> Додати місто
           </button>
         </div>
-      </section>
-
-      <section class="filters-panel">
+      <section class="filters-panel" id="filtersPanel" hidden>
         <div class="filter-control">
           <label for="primaryNameSelect">ВІДОБРАЖЕННЯ НАЗВИ</label>
           <select id="primaryNameSelect">
@@ -105,25 +106,10 @@
           </select>
         </div>
 
-        <div class="filter-control">
-          <label for="timeFormatSelect">ФОРМАТ ЧАСУ</label>
-          <select id="timeFormatSelect">
-            <option value="24">24 години</option>
-            <option value="12">12 годин (AM/PM)</option>
-          </select>
-        </div>
-
-        <div class="filter-control">
-          <label for="languageSelect">МОВА / LANGUAGE</label>
-          <select id="languageSelect">
-            <option value="uk">Українська</option>
-            <option value="en">English</option>
-          </select>
-        </div>
-
         <button id="resetFiltersButton" class="reset-filters-button" type="button">
           <span>↺</span> Скинути
         </button>
+      </section>
       </section>
 
       <section class="locations-section">
