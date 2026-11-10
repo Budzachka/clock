@@ -1,9 +1,10 @@
-
 "use strict";
 
 window.LOCATIONS = [
 
   // UNITED STATES
+
+  ["Birmingham","Alabama","USA","America/Chicago","🇺🇸"],
 
   ["Anchorage","Alaska","USA","America/Anchorage","🇺🇸"],
   ["Adak","Alaska","USA","America/Adak","🇺🇸"],
@@ -34,7 +35,7 @@ window.LOCATIONS = [
   ["Chicago","Illinois","USA","America/Chicago","🇺🇸"],
 
   ["Indianapolis","Indiana","USA","America/Indiana/Indianapolis","🇺🇸"],
-  ["Gary","Indiana","USA","America/Indiana/Knox","🇺🇸"],
+  ["Gary","Indiana","USA","America/Chicago","🇺🇸"],
 
   ["Des Moines","Iowa","USA","America/Chicago","🇺🇸"],
 
