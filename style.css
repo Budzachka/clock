@@ -993,3 +993,45 @@ h1 span {
   color: var(--muted);
   font-size: 12px;
 }
+
+/* LIST ROW SPACING + TEMPLATE */
+
+@media (min-width: 681px) {
+  .list-view .location-card {
+    padding: 18px 20px;
+    row-gap: 4px;
+  }
+
+  .list-view .location-clock {
+    line-height: 1.2;
+  }
+
+  .list-view .location-date {
+    margin-top: 4px;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+}
+
+.toolbar .reset-filters-button {
+  height: 46px;
+}
+
+.template-text {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font: 12px/1.5 ui-monospace, Consolas, monospace;
+  resize: vertical;
+  word-break: break-all;
+}
+
+.template-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
