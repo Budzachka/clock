@@ -30,28 +30,19 @@
       </a>
 
       <div class="topbar-right">
-        <span class="live-indicator">
-          <i></i> Живий час
-        </span>
-
-        <button
-          class="icon-button"
-          id="themeToggle"
-          type="button"
-          aria-label="Перемкнути тему"
-        >☼</button>
+        <span class="live-indicator"><i></i> Живий час</span>
+        <button class="icon-button" id="themeToggle" type="button" aria-label="Перемкнути тему">☼</button>
       </div>
     </header>
 
     <main>
-
       <section class="intro">
         <div>
           <p class="eyebrow">WORLD CLOCK</p>
           <h1>Час у Північній Америці</h1>
           <p class="intro-copy">
             Стеж за місцевим часом у потрібних містах.
-            Додавай локації, змінюй порядок і обирай зручний вигляд.
+            Налаштовуй відображення, фільтруй і сортуй локації.
           </p>
         </div>
 
@@ -65,52 +56,61 @@
       <section class="toolbar">
         <div class="search-wrap">
           <span>⌕</span>
-
           <input
             id="searchInput"
             type="search"
             maxlength="80"
-            placeholder="Пошук міста або штату…"
+            placeholder="Пошук міста, штату або країни…"
             autocomplete="off"
-            aria-label="Пошук міста"
+            aria-label="Пошук локацій"
           >
-
-          <button
-            id="clearSearch"
-            class="clear-search"
-            type="button"
-            aria-label="Очистити пошук"
-            hidden
-          >×</button>
+          <button id="clearSearch" class="clear-search" type="button" aria-label="Очистити пошук" hidden>×</button>
         </div>
 
         <div class="toolbar-actions">
-
           <div class="view-switch" role="group" aria-label="Вигляд">
-            <button
-              type="button"
-              class="view-button active"
-              data-view="cards"
-              aria-pressed="true"
-            >▦ <span>Картки</span></button>
-
-            <button
-              type="button"
-              class="view-button"
-              data-view="list"
-              aria-pressed="false"
-            >☷ <span>Список</span></button>
+            <button type="button" class="view-button active" data-view="cards" aria-pressed="true">▦ <span>Картки</span></button>
+            <button type="button" class="view-button" data-view="list" aria-pressed="false">☷ <span>Список</span></button>
           </div>
 
-          <button
-            id="addLocationButton"
-            class="primary-button"
-            type="button"
-          >
-            ＋ Додати місто
-          </button>
-
+          <button id="addLocationButton" class="primary-button" type="button">＋ Додати місто</button>
         </div>
+      </section>
+
+      <section class="filters-panel">
+        <div class="filter-control">
+          <label for="primaryNameSelect">Основна назва</label>
+          <select id="primaryNameSelect">
+            <option value="city">Місто першим</option>
+            <option value="region">Штат / регіон першим</option>
+          </select>
+        </div>
+
+        <div class="filter-control">
+          <label for="timeFilter">Фільтр за місцевим часом</label>
+          <select id="timeFilter">
+            <option value="all">Усі години</option>
+            <option value="night">Ніч · 00:00–05:59</option>
+            <option value="morning">Ранок · 06:00–11:59</option>
+            <option value="day">День · 12:00–17:59</option>
+            <option value="evening">Вечір · 18:00–23:59</option>
+          </select>
+        </div>
+
+        <div class="filter-control">
+          <label for="sortSelect">Сортування</label>
+          <select id="sortSelect">
+            <option value="manual">Мій порядок</option>
+            <option value="city-asc">За містом А–Я</option>
+            <option value="city-desc">За містом Я–А</option>
+            <option value="region-asc">За штатом / регіоном А–Я</option>
+            <option value="region-desc">За штатом / регіоном Я–А</option>
+            <option value="time-asc">За часом: раніше → пізніше</option>
+            <option value="time-desc">За часом: пізніше → раніше</option>
+          </select>
+        </div>
+
+        <button id="resetFiltersButton" class="reset-filters-button" type="button">Скинути фільтри</button>
       </section>
 
       <div class="list-heading">
@@ -119,83 +119,43 @@
           <p id="locationCount" class="muted-label">0 локацій</p>
         </div>
 
-        <button
-          id="resetOrderButton"
-          class="text-button"
-          type="button"
-        >Скинути порядок</button>
+        <button id="resetOrderButton" class="text-button" type="button">Скинути порядок</button>
       </div>
 
-      <section
-        id="locationsList"
-        class="locations-grid"
-        aria-live="polite"
-      ></section>
+      <section id="locationsList" class="locations-grid" aria-live="polite"></section>
 
       <div id="emptyState" class="empty-state" hidden>
         <span class="empty-icon">◷</span>
         <h3>Поки немає локацій</h3>
         <p>Додай міста, у яких хочеш відстежувати час.</p>
-
-        <button
-          id="emptyAddButton"
-          class="primary-button"
-          type="button"
-        >＋ Додати місто</button>
+        <button id="emptyAddButton" class="primary-button" type="button">＋ Додати місто</button>
       </div>
 
-      <p
-        id="statusMessage"
-        class="status-message"
-        role="status"
-        aria-live="polite"
-      ></p>
-
+      <p id="statusMessage" class="status-message" role="status" aria-live="polite"></p>
     </main>
 
     <footer class="footer">
-      <span>
-        Час оновлюється автоматично · Враховується літній час
-      </span>
-
-      <span>
-        Дані зберігаються у цьому браузері
-      </span>
+      <span>Час оновлюється автоматично · Враховується літній час</span>
+      <span>Дані зберігаються у цьому браузері</span>
     </footer>
-
   </div>
 
   <dialog id="locationDialog" class="dialog">
-
     <div class="dialog-header">
       <div>
         <p class="eyebrow">LOCATION CATALOG</p>
         <h2>Додати локації</h2>
-
         <p class="dialog-description">
-          Обери місто зі списку. Для регіонів із кількома часовими
-          поясами доступно декілька міст.
+          Обери місто зі списку. Для регіонів із кількома часовими поясами доступно декілька міст.
         </p>
       </div>
 
-      <button
-        id="closeDialogButton"
-        class="icon-button close-button"
-        type="button"
-        aria-label="Закрити"
-      >×</button>
+      <button id="closeDialogButton" class="icon-button close-button" type="button" aria-label="Закрити">×</button>
     </div>
 
     <label class="catalog-search">
       <span>⌕</span>
-
-      <input
-        id="catalogSearch"
-        type="search"
-        maxlength="80"
-        placeholder="Знайти місто, штат або провінцію…"
-        autocomplete="off"
-      >
+      <input id="catalogSearch" type="search" maxlength="80" placeholder="Знайти місто, штат або провінцію…" autocomplete="off">
     </label>
 
     <div class="catalog-meta">
@@ -204,8 +164,6 @@
     </div>
 
     <div id="catalogList" class="catalog-list"></div>
-
   </dialog>
-
 </body>
 </html>
