@@ -1,4 +1,3 @@
-
 "use strict";
 
 const STORAGE_KEY = "north-america-time-tracker-settings";
@@ -27,7 +26,16 @@ const elements = {
   statusMessage: document.getElementById("statusMessage")
 };
 
-const defaultIds = locations.slice(0, 8).map(location => location.id);
+const COUNTRY_ALIASES = {
+  USA: "США Сполучені Штати Америки United States",
+  Canada: "Канада"
+};
+
+const DEFAULT_CITIES = ["New York", "Chicago", "Denver", "Los Angeles", "Toronto", "Vancouver", "Anchorage", "Honolulu"];
+
+const defaultIds = DEFAULT_CITIES
+  .map(city => locations.find(location => location.city === city)?.id)
+  .filter(Boolean);
 
 function loadSettings() {
   try {
@@ -46,11 +54,13 @@ const savedSettings = loadSettings();
 
 const state = {
   ids: Array.isArray(savedSettings?.ids)
-    ? savedSettings.ids.filter(id => locations.some(location => location.id === id))
+    ? [...new Set(savedSettings.ids)].filter(id => locations.some(location => location.id === id))
     : [...defaultIds],
 
   view: savedSettings?.view === "list" ? "list" : "cards",
-  theme: savedSettings?.theme === "dark" ? "dark" : "light",
+  theme: savedSettings?.theme
+    ? (savedSettings.theme === "dark" ? "dark" : "light")
+    : (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light"),
   primaryName: savedSettings?.primaryName === "region" ? "region" : "city",
 
   sort: [
@@ -124,7 +134,7 @@ function formatTime(timeZone) {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-    hour12: false
+    hourCycle: "h23"
   }).format(new Date());
 }
 
@@ -206,7 +216,7 @@ function matchesSearch(location, query) {
     getCity(location),
     getRegion(location),
     getCountry(location),
-    getTimeZone(location)
+    COUNTRY_ALIASES[getCountry(location)] || ""
   ].join(" ").toLocaleLowerCase("uk-UA");
 
   return searchableText.includes(query);
@@ -342,6 +352,9 @@ function createLocationCard(location) {
     getDayDifferenceLabel(getDayDifference(getTimeZone(location)))
   );
 
+  zone.dataset.zoneName = getTimeZone(location);
+  dayLabel.dataset.dayZone = getTimeZone(location);
+
   footer.append(zone, dayLabel);
   card.append(top, clock, date, footer);
 
@@ -354,6 +367,7 @@ function createLocationCard(location) {
 
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", location.id);
+    event.dataTransfer.setDragImage(card, 20, 20);
     card.classList.add("dragging");
   });
 
@@ -361,6 +375,7 @@ function createLocationCard(location) {
     if (state.sort !== "manual" || elements.searchInput.value.trim()) return;
 
     event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
     card.classList.add("drag-over");
   });
 
@@ -402,6 +417,13 @@ function renderLocations() {
 
   elements.locationCount.textContent = String(visibleLocations.length);
   elements.emptyState.hidden = visibleLocations.length > 0;
+
+  const hasQuery = Boolean(elements.searchInput.value.trim());
+  elements.emptyState.querySelector("h3").textContent = hasQuery ? "Нічого не знайдено" : "Тут поки порожньо";
+  elements.emptyState.querySelector("p").textContent = hasQuery
+    ? "Спробуй змінити пошуковий запит."
+    : "Додай міста, щоб стежити за часом у різних куточках Північної Америки.";
+  elements.emptyAddButton.hidden = hasQuery;
   elements.clearSearch.hidden = !elements.searchInput.value;
 
   document.querySelectorAll(".view-button").forEach(button => {
@@ -412,6 +434,8 @@ function renderLocations() {
   });
 }
 
+let lastMinuteKey = Math.floor(Date.now() / 60000);
+
 function updateClocks() {
   const now = new Date();
 
@@ -419,7 +443,7 @@ function updateClocks() {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-    hour12: false
+    hourCycle: "h23"
   }).format(now);
 
   elements.localDate.textContent = new Intl.DateTimeFormat("uk-UA", {
@@ -436,6 +460,24 @@ function updateClocks() {
   document.querySelectorAll("[data-date-time-zone]").forEach(element => {
     element.textContent = formatDate(element.dataset.dateTimeZone);
   });
+
+  document.querySelectorAll("[data-day-zone]").forEach(element => {
+    element.textContent = getDayDifferenceLabel(getDayDifference(element.dataset.dayZone));
+  });
+
+  document.querySelectorAll("[data-zone-name]").forEach(element => {
+    element.textContent = getTimeZoneName(element.dataset.zoneName);
+  });
+
+  const minuteKey = Math.floor(now.getTime() / 60000);
+
+  if (minuteKey !== lastMinuteKey) {
+    lastMinuteKey = minuteKey;
+
+    if (state.sort.startsWith("time") && !document.querySelector(".location-card.dragging")) {
+      renderLocations();
+    }
+  }
 }
 
 function addLocation(id) {
@@ -491,7 +533,7 @@ function resetOrder() {
   saveSettings();
   renderLocations();
 
-  showStatus("Початковий порядок відновлено.");
+  showStatus("Початковий список відновлено.");
 }
 
 function resetFilters() {
@@ -527,6 +569,7 @@ function openCatalog() {
     elements.locationDialog.showModal();
   }
 
+  elements.catalogList.scrollTop = 0;
   elements.catalogSearch.focus();
 }
 
@@ -545,11 +588,14 @@ function renderCatalog() {
     const text = [
       getCity(location),
       getRegion(location),
-      getCountry(location)
+      getCountry(location),
+      COUNTRY_ALIASES[getCountry(location)] || ""
     ].join(" ").toLocaleLowerCase("uk-UA");
 
     return text.includes(query);
   });
+
+  const scrollTop = elements.catalogList.scrollTop;
 
   elements.catalogList.replaceChildren();
   elements.catalogCount.textContent = `${filtered.length} міст`;
@@ -613,6 +659,8 @@ function renderCatalog() {
 
     elements.catalogList.appendChild(item);
   }
+
+  elements.catalogList.scrollTop = scrollTop;
 }
 
 /* Пошук */
@@ -675,10 +723,18 @@ elements.themeToggle.addEventListener("click", () => {
 elements.addLocationButton.addEventListener("click", openCatalog);
 elements.emptyAddButton.addEventListener("click", openCatalog);
 elements.closeDialogButton.addEventListener("click", closeCatalog);
-elements.catalogSearch.addEventListener("input", renderCatalog);
+elements.catalogSearch.addEventListener("input", () => {
+  renderCatalog();
+  elements.catalogList.scrollTop = 0;
+});
 
 elements.locationDialog.addEventListener("click", event => {
-  if (event.target === elements.locationDialog) {
+  const rect = elements.locationDialog.getBoundingClientRect();
+  const outside =
+    event.clientX < rect.left || event.clientX > rect.right ||
+    event.clientY < rect.top || event.clientY > rect.bottom;
+
+  if (event.target === elements.locationDialog && outside) {
     closeCatalog();
   }
 });
@@ -695,7 +751,12 @@ function init() {
   renderLocations();
   updateClocks();
 
-  window.setInterval(updateClocks, 1000);
+  const tick = () => {
+    updateClocks();
+    window.setTimeout(tick, 1000 - (Date.now() % 1000) + 5);
+  };
+
+  window.setTimeout(tick, 1000 - (Date.now() % 1000) + 5);
 }
 
 init();
