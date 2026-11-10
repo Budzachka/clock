@@ -24,6 +24,8 @@ const elements = {
   catalogList: document.getElementById("catalogList"),
   catalogCount: document.getElementById("catalogCount"),
   statusMessage: document.getElementById("statusMessage"),
+  languageSelect: document.getElementById("languageSelect"),
+  timeFormatSelect: document.getElementById("timeFormatSelect"),
   dateFormatSelect: document.getElementById("dateFormatSelect"),
   templateButton: document.getElementById("templateButton"),
   templateDialog: document.getElementById("templateDialog"),
@@ -71,6 +73,8 @@ const state = {
     : (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light"),
   primaryName: savedSettings?.primaryName === "region" ? "region" : "city",
   dateFormat: ["regional", "mdy", "dmy"].includes(savedSettings?.dateFormat) ? savedSettings.dateFormat : "regional",
+  lang: savedSettings?.lang === "en" ? "en" : "uk",
+  hour12: savedSettings?.hour12 === "12" ? "12" : "24",
 
   sort: [
     "manual",
@@ -85,6 +89,136 @@ const state = {
     : "manual"
 };
 
+const EN = {
+  "North America Time Tracker — головна": "North America Time Tracker — home",
+  "Змінити тему": "Change theme",
+  "Увімкнути світлу тему": "Switch to light theme",
+  "Увімкнути темну тему": "Switch to dark theme",
+  "Час у": "Time in",
+  "Північній Америці.": "North America.",
+  "Усі важливі часові пояси в одному місці. Зручно, швидко та завжди актуально.": "All the key time zones in one place. Convenient, fast and always up to date.",
+  "ТВІЙ МІСЦЕВИЙ ЧАС": "YOUR LOCAL TIME",
+  "Знайти місто, штат або країну...": "Search city, state or country...",
+  "Пошук локацій": "Search locations",
+  "Очистити пошук": "Clear search",
+  "Вигляд локацій": "Location view",
+  "Картки": "Cards",
+  "Список": "List",
+  "Додати місто": "Add city",
+  "⇄ Шаблон": "⇄ Template",
+  "ВІДОБРАЖЕННЯ НАЗВИ": "NAME DISPLAY",
+  "Місто першим": "City first",
+  "Штат / регіон першим": "State / region first",
+  "СОРТУВАННЯ": "SORT",
+  "Мій порядок": "My order",
+  "Місто: A–Z": "City: A–Z",
+  "Місто: Z–A": "City: Z–A",
+  "Штат / регіон: A–Z": "State / region: A–Z",
+  "Штат / регіон: Z–A": "State / region: Z–A",
+  "Місцевий час: раніше → пізніше": "Local time: earlier → later",
+  "Місцевий час: пізніше → раніше": "Local time: later → earlier",
+  "ФОРМАТ ДАТИ": "DATE FORMAT",
+  "Як у штаті / країні": "As in the state / country",
+  "ММ/ДД/РРРР": "MM/DD/YYYY",
+  "ДД/ММ/РРРР": "DD/MM/YYYY",
+  "ФОРМАТ ЧАСУ": "TIME FORMAT",
+  "24 години": "24-hour",
+  "12 годин (AM/PM)": "12-hour (AM/PM)",
+  "Скинути": "Reset",
+  "Мої локації": "My locations",
+  "Час оновлюється автоматично": "Time updates automatically",
+  "↺ Початковий список": "↺ Default list",
+  "Тут поки порожньо": "Nothing here yet",
+  "Додай міста, щоб стежити за часом у різних куточках Північної Америки.": "Add cities to follow the time across North America.",
+  "＋ Додати перше місто": "＋ Add your first city",
+  "Нічого не знайдено": "Nothing found",
+  "Спробуй змінити пошуковий запит.": "Try changing your search.",
+  "Автоматичне оновлення · Урахування літнього часу": "Auto-updating · Daylight saving time included",
+  "Додати локації": "Add locations",
+  "Знайди потрібне місто та додай його до свого списку.": "Find a city and add it to your list.",
+  "Закрити": "Close",
+  "Пошук міста або регіону...": "Search city or region...",
+  "Північна Америка": "North America",
+  "Шаблон налаштувань": "Settings template",
+  "Скопіюй код і встав його на іншому ноутбуці: відкриються ті самі міста, порядок, вигляд і формат дати.": "Copy the code and paste it on another laptop to get the same cities, order, view and date format.",
+  "Копіювати": "Copy",
+  "Застосувати вставлений код": "Apply pasted code",
+  "Для перетягування вибери «Мій порядок» та очисти пошук.": "To drag, choose “My order” and clear the search.",
+  "Перетягни, щоб змінити порядок": "Drag to reorder",
+  "Перемістити місто": "Move city",
+  "Видалити місто": "Remove city",
+  "Це місто вже є у твоєму списку.": "This city is already in your list.",
+  "Місто додано.": "City added.",
+  "Початковий список відновлено.": "Default list restored.",
+  "Налаштування відображення скинуто.": "Display settings reset.",
+  "Не вдалося зберегти налаштування браузера.": "Could not save browser settings.",
+  "Нічого не знайдено.": "Nothing found.",
+  "Додано ✓": "Added ✓",
+  "+ Додати": "+ Add",
+  "Завтра": "Tomorrow",
+  "Учора": "Yesterday",
+  "Код скопійовано.": "Code copied.",
+  "Натисни Ctrl+C (⌘C), щоб скопіювати.": "Press Ctrl+C (⌘C) to copy.",
+  "Шаблон застосовано.": "Template applied.",
+  "Некоректний код шаблону.": "Invalid template code."
+};
+
+const t = text => (state.lang === "en" ? (EN[text] ?? text) : text);
+
+const dateLocale = () => (state.lang === "en" ? "en-US" : "uk-UA");
+const timeLocale = () => (state.hour12 === "12" ? "en-US" : state.lang === "en" ? "en-GB" : "uk-UA");
+
+function timeOptions(timeZone) {
+  const is12 = state.hour12 === "12";
+  const options = {
+    hour: is12 ? "numeric" : "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: is12 ? "h12" : "h23"
+  };
+
+  if (timeZone) options.timeZone = timeZone;
+  return options;
+}
+
+const originalTexts = new WeakMap();
+
+function translateDom() {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode: node => node.parentElement.closest(
+      "script,style,#locationsList,#catalogList,#statusMessage,#localClock,#localDate,#templateStatus"
+    ) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+  });
+
+  for (let node; (node = walker.nextNode());) {
+    const raw = originalTexts.has(node) ? originalTexts.get(node) : node.nodeValue;
+    const key = raw.replace(/\s+/g, " ").trim();
+
+    if (!key || !(key in EN)) continue;
+
+    originalTexts.set(node, raw);
+    node.nodeValue = state.lang === "en" ? raw.replace(/\S[\s\S]*\S|\S/, () => EN[key]) : raw;
+  }
+
+  document.querySelectorAll("[placeholder],[aria-label],[title]").forEach(element => {
+    if (element.id === "themeToggle" || element.closest("#locationsList")) return;
+
+    element._orig = element._orig || {};
+
+    for (const attr of ["placeholder", "aria-label", "title"]) {
+      if (!element.hasAttribute(attr)) continue;
+      if (!(attr in element._orig)) element._orig[attr] = element.getAttribute(attr);
+      element.setAttribute(attr, t(element._orig[attr]));
+    }
+  });
+}
+
+function applyLanguage() {
+  document.documentElement.lang = state.lang;
+  translateDom();
+  applyTheme();
+}
+
 function saveSettings() {
   const settings = {
     ids: state.ids,
@@ -92,7 +226,9 @@ function saveSettings() {
     theme: state.theme,
     primaryName: state.primaryName,
     sort: state.sort,
-    dateFormat: state.dateFormat
+    dateFormat: state.dateFormat,
+    lang: state.lang,
+    hour12: state.hour12
   };
 
   try {
@@ -128,7 +264,7 @@ function getFlag(location) {
 }
 
 function showStatus(message) {
-  elements.statusMessage.textContent = message;
+  elements.statusMessage.textContent = t(message);
 
   if (message) {
     window.clearTimeout(showStatus.timeout);
@@ -139,13 +275,7 @@ function showStatus(message) {
 }
 
 function formatTime(timeZone) {
-  return new Intl.DateTimeFormat("uk-UA", {
-    timeZone,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23"
-  }).format(new Date());
+  return new Intl.DateTimeFormat(timeLocale(), timeOptions(timeZone)).format(new Date());
 }
 
 function formatDate(timeZone, country) {
@@ -156,7 +286,7 @@ function formatDate(timeZone, country) {
     : state.dateFormat === "dmy" ? "en-GB"
     : country === "Canada" ? "en-CA" : "en-US";
 
-  const weekday = new Intl.DateTimeFormat("uk-UA", { timeZone, weekday: "long" }).format(now);
+  const weekday = new Intl.DateTimeFormat(dateLocale(), { timeZone, weekday: "long" }).format(now);
 
   const numeric = new Intl.DateTimeFormat(locale, {
     timeZone,
@@ -206,13 +336,12 @@ function getDayDifference(timeZone) {
 }
 
 function getDayDifferenceLabel(difference) {
-  if (difference === 0) return "Той самий день";
-  if (difference === 1) return "Завтра";
-  if (difference === -1) return "Учора";
+  if (difference === 0) return "";
+  if (difference === 1) return t("Завтра");
+  if (difference === -1) return t("Учора");
 
-  return difference > 0
-    ? `+${difference} дні`
-    : `${difference} дні`;
+  const label = state.lang === "en" ? "days" : "дн.";
+  return `${difference > 0 ? "+" : ""}${difference} ${label}`;
 }
 
 function getMinutesOfDay(timeZone) {
@@ -330,14 +459,14 @@ function createLocationCard(location) {
 
   const dragButton = createElement("button", "card-action drag-handle", "⠿");
   dragButton.type = "button";
-  dragButton.title = "Перетягни, щоб змінити порядок";
-  dragButton.setAttribute("aria-label", "Перемістити місто");
+  dragButton.title = t("Перетягни, щоб змінити порядок");
+  dragButton.setAttribute("aria-label", t("Перемістити місто"));
   dragButton.draggable = true;
 
   const removeButton = createElement("button", "card-action", "×");
   removeButton.type = "button";
-  removeButton.title = "Видалити місто";
-  removeButton.setAttribute("aria-label", `Видалити ${city}`);
+  removeButton.title = t("Видалити місто");
+  removeButton.setAttribute("aria-label", `${t("Видалити місто")}: ${city}`);
 
   removeButton.addEventListener("click", () => removeLocation(location.id));
 
@@ -375,6 +504,7 @@ function createLocationCard(location) {
 
   zone.dataset.zoneName = getTimeZone(location);
   dayLabel.dataset.dayZone = getTimeZone(location);
+  dayLabel.hidden = !dayLabel.textContent;
 
   footer.append(zone, dayLabel);
   card.append(top, clock, date, footer);
@@ -440,10 +570,10 @@ function renderLocations() {
   elements.emptyState.hidden = visibleLocations.length > 0;
 
   const hasQuery = Boolean(elements.searchInput.value.trim());
-  elements.emptyState.querySelector("h3").textContent = hasQuery ? "Нічого не знайдено" : "Тут поки порожньо";
+  elements.emptyState.querySelector("h3").textContent = t(hasQuery ? "Нічого не знайдено" : "Тут поки порожньо");
   elements.emptyState.querySelector("p").textContent = hasQuery
-    ? "Спробуй змінити пошуковий запит."
-    : "Додай міста, щоб стежити за часом у різних куточках Північної Америки.";
+    ? t("Спробуй змінити пошуковий запит.")
+    : t("Додай міста, щоб стежити за часом у різних куточках Північної Америки.");
   elements.emptyAddButton.hidden = hasQuery;
   elements.clearSearch.hidden = !elements.searchInput.value;
 
@@ -460,14 +590,9 @@ let lastMinuteKey = Math.floor(Date.now() / 60000);
 function updateClocks() {
   const now = new Date();
 
-  elements.localClock.textContent = new Intl.DateTimeFormat("uk-UA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23"
-  }).format(now);
+  elements.localClock.textContent = new Intl.DateTimeFormat(timeLocale(), timeOptions()).format(now);
 
-  elements.localDate.textContent = new Intl.DateTimeFormat("uk-UA", {
+  elements.localDate.textContent = new Intl.DateTimeFormat(dateLocale(), {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -484,6 +609,7 @@ function updateClocks() {
 
   document.querySelectorAll("[data-day-zone]").forEach(element => {
     element.textContent = getDayDifferenceLabel(getDayDifference(element.dataset.dayZone));
+    element.hidden = !element.textContent;
   });
 
   document.querySelectorAll("[data-zone-name]").forEach(element => {
@@ -527,7 +653,7 @@ function removeLocation(id) {
   renderLocations();
   renderCatalog();
 
-  showStatus(`${getCity(location)} видалено зі списку.`);
+  showStatus(state.lang === "en" ? `${getCity(location)} removed.` : `${getCity(location)} видалено зі списку.`);
 }
 
 function moveLocation(draggedId, targetId) {
@@ -580,7 +706,7 @@ function applyTheme() {
 
   elements.themeToggle.setAttribute(
     "aria-label",
-    state.theme === "dark" ? "Увімкнути світлу тему" : "Увімкнути темну тему"
+    t(state.theme === "dark" ? "Увімкнути світлу тему" : "Увімкнути темну тему")
   );
 }
 
@@ -621,11 +747,11 @@ function renderCatalog() {
   const scrollTop = elements.catalogList.scrollTop;
 
   elements.catalogList.replaceChildren();
-  elements.catalogCount.textContent = `${filtered.length} міст`;
+  elements.catalogCount.textContent = `${filtered.length} ${state.lang === "en" ? "cities" : "міст"}`;
 
   if (filtered.length === 0) {
     elements.catalogList.appendChild(
-      createElement("div", "catalog-empty", "Нічого не знайдено.")
+      createElement("div", "catalog-empty", t("Нічого не знайдено."))
     );
     return;
   }
@@ -672,7 +798,7 @@ function renderCatalog() {
     const status = createElement(
       "span",
       "catalog-item-status",
-      alreadyAdded ? "Додано ✓" : "+ Додати"
+      t(alreadyAdded ? "Додано ✓" : "+ Додати")
     );
 
     item.disabled = alreadyAdded;
@@ -772,6 +898,26 @@ elements.dateFormatSelect.addEventListener("change", () => {
   renderLocations();
 });
 
+/* Мова та формат часу */
+
+elements.languageSelect.value = state.lang;
+elements.timeFormatSelect.value = state.hour12;
+
+elements.languageSelect.addEventListener("change", () => {
+  state.lang = elements.languageSelect.value;
+  saveSettings();
+  applyLanguage();
+  renderLocations();
+  renderCatalog();
+  updateClocks();
+});
+
+elements.timeFormatSelect.addEventListener("change", () => {
+  state.hour12 = elements.timeFormatSelect.value;
+  saveSettings();
+  updateClocks();
+});
+
 /* Шаблон налаштувань */
 
 const TEMPLATE_PREFIX = "NATT1:";
@@ -783,7 +929,9 @@ function encodeTemplate() {
     theme: state.theme,
     primaryName: state.primaryName,
     sort: state.sort,
-    dateFormat: state.dateFormat
+    dateFormat: state.dateFormat,
+    lang: state.lang,
+    hour12: state.hour12
   }));
 }
 
@@ -804,13 +952,20 @@ function applyTemplate(code) {
     state.sort = allowed(elements.sortSelect).includes(data.sort) ? data.sort : "manual";
     state.dateFormat = allowed(elements.dateFormatSelect).includes(data.dateFormat) ? data.dateFormat : "regional";
 
+    state.lang = data.lang === "en" ? "en" : "uk";
+    state.hour12 = data.hour12 === "12" ? "12" : "24";
+
+    elements.languageSelect.value = state.lang;
+    elements.timeFormatSelect.value = state.hour12;
     elements.sortSelect.value = state.sort;
     elements.primaryNameSelect.value = state.primaryName;
     elements.dateFormatSelect.value = state.dateFormat;
 
-    applyTheme();
+    applyLanguage();
     saveSettings();
     renderLocations();
+    renderCatalog();
+    updateClocks();
     return true;
   } catch (error) {
     return false;
@@ -832,11 +987,11 @@ elements.templateCopy.addEventListener("click", async () => {
 
   try {
     await navigator.clipboard.writeText(elements.templateText.value);
-    elements.templateStatus.textContent = "Код скопійовано.";
+    elements.templateStatus.textContent = t("Код скопійовано.");
   } catch (error) {
     elements.templateStatus.textContent = document.execCommand("copy")
-      ? "Код скопійовано."
-      : "Натисни Ctrl+C (⌘C), щоб скопіювати.";
+      ? t("Код скопійовано.")
+      : t("Натисни Ctrl+C (⌘C), щоб скопіювати.");
   }
 });
 
@@ -844,8 +999,8 @@ elements.templateApply.addEventListener("click", () => {
   const ok = applyTemplate(elements.templateText.value);
 
   elements.templateStatus.textContent = ok
-    ? "Шаблон застосовано."
-    : "Некоректний код шаблону.";
+    ? t("Шаблон застосовано.")
+    : t("Некоректний код шаблону.");
 });
 
 /* Запуск */
@@ -856,7 +1011,7 @@ function init() {
     return;
   }
 
-  applyTheme();
+  applyLanguage();
   renderLocations();
   updateClocks();
 
