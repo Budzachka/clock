@@ -23,7 +23,15 @@ const elements = {
   catalogSearch: document.getElementById("catalogSearch"),
   catalogList: document.getElementById("catalogList"),
   catalogCount: document.getElementById("catalogCount"),
-  statusMessage: document.getElementById("statusMessage")
+  statusMessage: document.getElementById("statusMessage"),
+  dateFormatSelect: document.getElementById("dateFormatSelect"),
+  templateButton: document.getElementById("templateButton"),
+  templateDialog: document.getElementById("templateDialog"),
+  templateText: document.getElementById("templateText"),
+  templateCopy: document.getElementById("templateCopy"),
+  templateApply: document.getElementById("templateApply"),
+  templateClose: document.getElementById("templateClose"),
+  templateStatus: document.getElementById("templateStatus")
 };
 
 const COUNTRY_ALIASES = {
@@ -62,6 +70,7 @@ const state = {
     ? (savedSettings.theme === "dark" ? "dark" : "light")
     : (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light"),
   primaryName: savedSettings?.primaryName === "region" ? "region" : "city",
+  dateFormat: ["regional", "mdy", "dmy"].includes(savedSettings?.dateFormat) ? savedSettings.dateFormat : "regional",
 
   sort: [
     "manual",
@@ -82,7 +91,8 @@ function saveSettings() {
     view: state.view,
     theme: state.theme,
     primaryName: state.primaryName,
-    sort: state.sort
+    sort: state.sort,
+    dateFormat: state.dateFormat
   };
 
   try {
@@ -138,14 +148,24 @@ function formatTime(timeZone) {
   }).format(new Date());
 }
 
-function formatDate(timeZone) {
-  return new Intl.DateTimeFormat("uk-UA", {
+function formatDate(timeZone, country) {
+  const now = new Date();
+
+  // regional: США — ММ/ДД/РРРР, Канада — РРРР-ММ-ДД (офіційний формат)
+  const locale = state.dateFormat === "mdy" ? "en-US"
+    : state.dateFormat === "dmy" ? "en-GB"
+    : country === "Canada" ? "en-CA" : "en-US";
+
+  const weekday = new Intl.DateTimeFormat("uk-UA", { timeZone, weekday: "long" }).format(now);
+
+  const numeric = new Intl.DateTimeFormat(locale, {
     timeZone,
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  }).format(new Date());
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(now);
+
+  return `${weekday}, ${numeric}`;
 }
 
 function getTimeZoneName(timeZone) {
@@ -334,9 +354,10 @@ function createLocationCard(location) {
   const date = createElement(
     "span",
     "location-date",
-    formatDate(getTimeZone(location))
+    formatDate(getTimeZone(location), getCountry(location))
   );
   date.dataset.dateTimeZone = getTimeZone(location);
+  date.dataset.dateCountry = getCountry(location);
 
   const footer = createElement("div", "location-footer");
 
@@ -458,7 +479,7 @@ function updateClocks() {
   });
 
   document.querySelectorAll("[data-date-time-zone]").forEach(element => {
-    element.textContent = formatDate(element.dataset.dateTimeZone);
+    element.textContent = formatDate(element.dataset.dateTimeZone, element.dataset.dateCountry);
   });
 
   document.querySelectorAll("[data-day-zone]").forEach(element => {
@@ -543,6 +564,8 @@ function resetFilters() {
 
   state.sort = "manual";
   state.primaryName = "city";
+  state.dateFormat = "regional";
+  elements.dateFormatSelect.value = "regional";
 
   saveSettings();
   renderLocations();
@@ -737,6 +760,92 @@ elements.locationDialog.addEventListener("click", event => {
   if (event.target === elements.locationDialog && outside) {
     closeCatalog();
   }
+});
+
+/* Формат дати */
+
+elements.dateFormatSelect.value = state.dateFormat;
+
+elements.dateFormatSelect.addEventListener("change", () => {
+  state.dateFormat = elements.dateFormatSelect.value;
+  saveSettings();
+  renderLocations();
+});
+
+/* Шаблон налаштувань */
+
+const TEMPLATE_PREFIX = "NATT1:";
+
+function encodeTemplate() {
+  return TEMPLATE_PREFIX + btoa(JSON.stringify({
+    ids: state.ids,
+    view: state.view,
+    theme: state.theme,
+    primaryName: state.primaryName,
+    sort: state.sort,
+    dateFormat: state.dateFormat
+  }));
+}
+
+function applyTemplate(code) {
+  try {
+    const text = code.trim();
+    if (!text.startsWith(TEMPLATE_PREFIX)) return false;
+
+    const data = JSON.parse(atob(text.slice(TEMPLATE_PREFIX.length)));
+    if (!data || !Array.isArray(data.ids)) return false;
+
+    const allowed = select => [...select.options].map(option => option.value);
+
+    state.ids = [...new Set(data.ids)].filter(id => locations.some(location => location.id === id));
+    state.view = data.view === "list" ? "list" : "cards";
+    state.theme = data.theme === "dark" ? "dark" : "light";
+    state.primaryName = data.primaryName === "region" ? "region" : "city";
+    state.sort = allowed(elements.sortSelect).includes(data.sort) ? data.sort : "manual";
+    state.dateFormat = allowed(elements.dateFormatSelect).includes(data.dateFormat) ? data.dateFormat : "regional";
+
+    elements.sortSelect.value = state.sort;
+    elements.primaryNameSelect.value = state.primaryName;
+    elements.dateFormatSelect.value = state.dateFormat;
+
+    applyTheme();
+    saveSettings();
+    renderLocations();
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+elements.templateButton.addEventListener("click", () => {
+  elements.templateText.value = encodeTemplate();
+  elements.templateStatus.textContent = "";
+  elements.templateDialog.showModal();
+  elements.templateText.select();
+});
+
+elements.templateClose.addEventListener("click", () => elements.templateDialog.close());
+
+elements.templateCopy.addEventListener("click", async () => {
+  elements.templateText.value = encodeTemplate();
+  elements.templateText.select();
+
+  try {
+    await navigator.clipboard.writeText(elements.templateText.value);
+    elements.templateStatus.textContent = "Код скопійовано.";
+  } catch (error) {
+    elements.templateStatus.textContent = document.execCommand("copy")
+      ? "Код скопійовано."
+      : "Натисни Ctrl+C (⌘C), щоб скопіювати.";
+  }
+});
+
+elements.templateApply.addEventListener("click", () => {
+  const ok = applyTemplate(elements.templateText.value);
+
+  elements.templateStatus.textContent = ok
+    ? "Шаблон застосовано."
+    : "Некоректний код шаблону.";
 });
 
 /* Запуск */
