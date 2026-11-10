@@ -1,3 +1,4 @@
+// build: v5 (index.html + style.css + script.js + locations.js мають бути з однієї версії)
 "use strict";
 
 const STORAGE_KEY = "north-america-time-tracker-settings";
@@ -37,6 +38,17 @@ const elements = {
   templateClose: document.getElementById("templateClose"),
   templateStatus: document.getElementById("templateStatus")
 };
+
+const missingElements = Object.entries(elements).filter(([, element]) => !element).map(([name]) => name);
+
+if (missingElements.length) {
+  const message = "Файли з різних версій: у index.html немає елементів (" + missingElements.join(", ") + "). Заміни всі 4 файли разом і натисни Ctrl+F5.";
+  const banner = document.createElement("div");
+  banner.textContent = message;
+  banner.style.cssText = "padding:14px 18px;background:#fff3cd;color:#664d03;font:14px sans-serif";
+  document.body.prepend(banner);
+  throw new Error(message);
+}
 
 const COUNTRY_ALIASES = {
   USA: "США Сполучені Штати Америки United States",
