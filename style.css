@@ -962,7 +962,7 @@ input[type="search"]::-webkit-search-decoration {
   display: none;
 }
 
-h1 span {
+h1 span:last-child {
   color: var(--accent);
 }
 
@@ -1034,4 +1034,8 @@ h1 span {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 12px;
+}
+
+.filters-panel {
+  flex-wrap: wrap;
 }
