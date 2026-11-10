@@ -67,6 +67,7 @@
             <button type="button" class="view-button active" data-view="cards" aria-pressed="true" title="Картки">▦</button>
             <button type="button" class="view-button" data-view="list" aria-pressed="false" title="Список">☷</button>
           </div>
+          <button id="templateButton" class="reset-filters-button" type="button">⇄ Шаблон</button>
           <button id="addLocationButton" class="primary-button" type="button">
             <span>＋</span> Додати місто
           </button>
@@ -92,6 +93,15 @@
             <option value="region-desc">Штат / регіон: Z–A</option>
             <option value="time-asc">Місцевий час: раніше → пізніше</option>
             <option value="time-desc">Місцевий час: пізніше → раніше</option>
+          </select>
+        </div>
+
+        <div class="filter-control">
+          <label for="dateFormatSelect">ФОРМАТ ДАТИ</label>
+          <select id="dateFormatSelect">
+            <option value="regional">Як у штаті / країні</option>
+            <option value="mdy">ММ/ДД/РРРР</option>
+            <option value="dmy">ДД/ММ/РРРР</option>
           </select>
         </div>
 
@@ -156,6 +166,23 @@
     </div>
 
     <div id="catalogList" class="catalog-list"></div>
+  </dialog>
+
+  <dialog id="templateDialog" class="dialog">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">TEMPLATE</p>
+        <h2>Шаблон налаштувань</h2>
+        <p class="dialog-description">Скопіюй код і встав його на іншому ноутбуці: відкриються ті самі міста, порядок, вигляд і формат дати.</p>
+      </div>
+      <button id="templateClose" class="icon-button close-button" type="button" aria-label="Закрити">×</button>
+    </div>
+    <textarea id="templateText" class="template-text" rows="5" spellcheck="false"></textarea>
+    <div class="template-actions">
+      <button id="templateCopy" class="primary-button" type="button">Копіювати</button>
+      <button id="templateApply" class="reset-filters-button" type="button">Застосувати вставлений код</button>
+    </div>
+    <p id="templateStatus" class="status-message" role="status"></p>
   </dialog>
 </body>
 </html>
