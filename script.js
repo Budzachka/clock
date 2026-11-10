@@ -24,8 +24,10 @@ const elements = {
   catalogList: document.getElementById("catalogList"),
   catalogCount: document.getElementById("catalogCount"),
   statusMessage: document.getElementById("statusMessage"),
-  languageSelect: document.getElementById("languageSelect"),
-  timeFormatSelect: document.getElementById("timeFormatSelect"),
+  langToggle: document.getElementById("langToggle"),
+  timeToggle: document.getElementById("timeToggle"),
+  filtersToggle: document.getElementById("filtersToggle"),
+  filtersPanel: document.getElementById("filtersPanel"),
   dateFormatSelect: document.getElementById("dateFormatSelect"),
   templateButton: document.getElementById("templateButton"),
   templateDialog: document.getElementById("templateDialog"),
@@ -92,6 +94,7 @@ const state = {
 const EN = {
   "North America Time Tracker — головна": "North America Time Tracker — home",
   "Змінити тему": "Change theme",
+  "Фільтри": "Filters",
   "Увімкнути світлу тему": "Switch to light theme",
   "Увімкнути темну тему": "Switch to dark theme",
   "Час у": "Time in",
@@ -213,10 +216,26 @@ function translateDom() {
   });
 }
 
+function updateToggles() {
+  const en = state.lang === "en";
+  const is12 = state.hour12 === "12";
+
+  elements.langToggle.textContent = en ? "EN" : "UA";
+  elements.langToggle.title = en ? "Language: English (click for Ukrainian)" : "Мова: українська (натисни для English)";
+  elements.langToggle.setAttribute("aria-label", elements.langToggle.title);
+
+  elements.timeToggle.textContent = is12 ? "12H" : "24H";
+  elements.timeToggle.title = en
+    ? (is12 ? "Time format: 12-hour AM/PM (click for 24-hour)" : "Time format: 24-hour (click for 12-hour AM/PM)")
+    : (is12 ? "Формат часу: 12 год, AM/PM (натисни для 24 год)" : "Формат часу: 24 год (натисни для 12 год, AM/PM)");
+  elements.timeToggle.setAttribute("aria-label", elements.timeToggle.title);
+}
+
 function applyLanguage() {
   document.documentElement.lang = state.lang;
   translateDom();
   applyTheme();
+  updateToggles();
 }
 
 function saveSettings() {
@@ -898,13 +917,10 @@ elements.dateFormatSelect.addEventListener("change", () => {
   renderLocations();
 });
 
-/* Мова та формат часу */
+/* Мова, формат часу, фільтри */
 
-elements.languageSelect.value = state.lang;
-elements.timeFormatSelect.value = state.hour12;
-
-elements.languageSelect.addEventListener("change", () => {
-  state.lang = elements.languageSelect.value;
+elements.langToggle.addEventListener("click", () => {
+  state.lang = state.lang === "en" ? "uk" : "en";
   saveSettings();
   applyLanguage();
   renderLocations();
@@ -912,10 +928,33 @@ elements.languageSelect.addEventListener("change", () => {
   updateClocks();
 });
 
-elements.timeFormatSelect.addEventListener("change", () => {
-  state.hour12 = elements.timeFormatSelect.value;
+elements.timeToggle.addEventListener("click", () => {
+  state.hour12 = state.hour12 === "12" ? "24" : "12";
   saveSettings();
+  updateToggles();
   updateClocks();
+});
+
+function setFiltersOpen(open) {
+  elements.filtersPanel.hidden = !open;
+  elements.filtersToggle.setAttribute("aria-expanded", String(open));
+}
+
+elements.filtersToggle.addEventListener("click", () => {
+  setFiltersOpen(elements.filtersPanel.hidden);
+});
+
+document.addEventListener("click", event => {
+  if (!elements.filtersPanel.hidden && !event.target.closest("#filtersPanel, #filtersToggle")) {
+    setFiltersOpen(false);
+  }
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && !elements.filtersPanel.hidden) {
+    setFiltersOpen(false);
+    elements.filtersToggle.focus();
+  }
 });
 
 /* Шаблон налаштувань */
@@ -955,8 +994,6 @@ function applyTemplate(code) {
     state.lang = data.lang === "en" ? "en" : "uk";
     state.hour12 = data.hour12 === "12" ? "12" : "24";
 
-    elements.languageSelect.value = state.lang;
-    elements.timeFormatSelect.value = state.hour12;
     elements.sortSelect.value = state.sort;
     elements.primaryNameSelect.value = state.primaryName;
     elements.dateFormatSelect.value = state.dateFormat;
