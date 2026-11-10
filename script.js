@@ -2,7 +2,6 @@
 "use strict";
 
 const STORAGE_KEY = "north-america-time-tracker-settings";
-
 const locations = Array.isArray(window.LOCATIONS) ? window.LOCATIONS : [];
 
 const elements = {
@@ -11,7 +10,6 @@ const elements = {
   emptyState: document.getElementById("emptyState"),
   searchInput: document.getElementById("searchInput"),
   clearSearch: document.getElementById("clearSearch"),
-  timeFilter: document.getElementById("timeFilter"),
   sortSelect: document.getElementById("sortSelect"),
   primaryNameSelect: document.getElementById("primaryNameSelect"),
   resetFiltersButton: document.getElementById("resetFiltersButton"),
@@ -34,18 +32,10 @@ const defaultIds = locations.slice(0, 8).map(location => location.id);
 function loadSettings() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-
-    if (!saved) {
-      return null;
-    }
+    if (!saved) return null;
 
     const parsed = JSON.parse(saved);
-
-    if (!parsed || typeof parsed !== "object") {
-      return null;
-    }
-
-    return parsed;
+    return parsed && typeof parsed === "object" ? parsed : null;
   } catch (error) {
     console.warn("Не вдалося прочитати налаштування:", error);
     return null;
@@ -60,20 +50,20 @@ const state = {
     : [...defaultIds],
 
   view: savedSettings?.view === "list" ? "list" : "cards",
-
   theme: savedSettings?.theme === "dark" ? "dark" : "light",
-
   primaryName: savedSettings?.primaryName === "region" ? "region" : "city",
 
-  timeFilter: ["all", "night", "morning", "day", "evening"].includes(savedSettings?.timeFilter)
-    ? savedSettings.timeFilter
-    : "all",
-
-  sort: typeof savedSettings?.sort === "string"
+  sort: [
+    "manual",
+    "city-asc",
+    "city-desc",
+    "region-asc",
+    "region-desc",
+    "time-asc",
+    "time-desc"
+  ].includes(savedSettings?.sort)
     ? savedSettings.sort
-    : "manual",
-
-  orderBeforeSort: null
+    : "manual"
 };
 
 function saveSettings() {
@@ -82,7 +72,6 @@ function saveSettings() {
     view: state.view,
     theme: state.theme,
     primaryName: state.primaryName,
-    timeFilter: state.timeFilter,
     sort: state.sort
   };
 
@@ -99,23 +88,23 @@ function getLocation(id) {
 }
 
 function getCity(location) {
-  return location.city || location.name || "Невідоме місто";
+  return location?.city || location?.name || "Невідоме місто";
 }
 
 function getRegion(location) {
-  return location.region || location.state || location.province || "";
+  return location?.region || location?.state || location?.province || "";
 }
 
 function getCountry(location) {
-  return location.country || "";
+  return location?.country || "";
 }
 
 function getTimeZone(location) {
-  return location.timeZone || location.timezone || "UTC";
+  return location?.timeZone || location?.timezone || "UTC";
 }
 
 function getFlag(location) {
-  return location.flag || "🌎";
+  return location?.flag || "🌎";
 }
 
 function showStatus(message) {
@@ -123,7 +112,6 @@ function showStatus(message) {
 
   if (message) {
     window.clearTimeout(showStatus.timeout);
-
     showStatus.timeout = window.setTimeout(() => {
       elements.statusMessage.textContent = "";
     }, 3000);
@@ -148,18 +136,6 @@ function formatDate(timeZone) {
     month: "long",
     year: "numeric"
   }).format(new Date());
-}
-
-function getHour(timeZone) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour: "2-digit",
-    hourCycle: "h23"
-  }).formatToParts(new Date());
-
-  const hourPart = parts.find(part => part.type === "hour");
-
-  return hourPart ? Number(hourPart.value) : 0;
 }
 
 function getTimeZoneName(timeZone) {
@@ -194,10 +170,9 @@ function getDateKey(timeZone) {
 function getDayDifference(timeZone) {
   const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
-  const localDate = getDateKey(localZone);
-  const targetDate = getDateKey(timeZone);
-
-  return Math.round((targetDate - localDate) / 86400000);
+  return Math.round(
+    (getDateKey(timeZone) - getDateKey(localZone)) / 86400000
+  );
 }
 
 function getDayDifferenceLabel(difference) {
@@ -210,35 +185,22 @@ function getDayDifferenceLabel(difference) {
     : `${difference} дні`;
 }
 
-function matchesTimeFilter(location) {
-  if (state.timeFilter === "all") {
-    return true;
-  }
+function getMinutesOfDay(timeZone) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(new Date());
 
-  const hour = getHour(getTimeZone(location));
+  const hour = Number(parts.find(part => part.type === "hour")?.value || 0);
+  const minute = Number(parts.find(part => part.type === "minute")?.value || 0);
 
-  switch (state.timeFilter) {
-    case "night":
-      return hour >= 0 && hour < 6;
-
-    case "morning":
-      return hour >= 6 && hour < 12;
-
-    case "day":
-      return hour >= 12 && hour < 18;
-
-    case "evening":
-      return hour >= 18 && hour < 24;
-
-    default:
-      return true;
-  }
+  return hour * 60 + minute;
 }
 
 function matchesSearch(location, query) {
-  if (!query) {
-    return true;
-  }
+  if (!query) return true;
 
   const searchableText = [
     getCity(location),
@@ -251,13 +213,14 @@ function matchesSearch(location, query) {
 }
 
 function getVisibleLocations() {
-  const query = elements.searchInput.value.trim().toLocaleLowerCase("uk-UA");
+  const query = elements.searchInput.value
+    .trim()
+    .toLocaleLowerCase("uk-UA");
 
-  let result = state.ids
+  const result = state.ids
     .map(getLocation)
     .filter(Boolean)
-    .filter(location => matchesSearch(location, query))
-    .filter(matchesTimeFilter);
+    .filter(location => matchesSearch(location, query));
 
   switch (state.sort) {
     case "city-asc":
@@ -277,21 +240,15 @@ function getVisibleLocations() {
       break;
 
     case "time-asc":
-      result.sort((a, b) => {
-        const timeA = getMinutesOfDay(getTimeZone(a));
-        const timeB = getMinutesOfDay(getTimeZone(b));
-
-        return timeA - timeB;
-      });
+      result.sort((a, b) =>
+        getMinutesOfDay(getTimeZone(a)) - getMinutesOfDay(getTimeZone(b))
+      );
       break;
 
     case "time-desc":
-      result.sort((a, b) => {
-        const timeA = getMinutesOfDay(getTimeZone(a));
-        const timeB = getMinutesOfDay(getTimeZone(b));
-
-        return timeB - timeA;
-      });
+      result.sort((a, b) =>
+        getMinutesOfDay(getTimeZone(b)) - getMinutesOfDay(getTimeZone(a))
+      );
       break;
 
     default:
@@ -301,30 +258,11 @@ function getVisibleLocations() {
   return result;
 }
 
-function getMinutesOfDay(timeZone) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23"
-  }).formatToParts(new Date());
-
-  const hour = Number(parts.find(part => part.type === "hour")?.value || 0);
-  const minute = Number(parts.find(part => part.type === "minute")?.value || 0);
-
-  return hour * 60 + minute;
-}
-
 function createElement(tag, className, text) {
   const element = document.createElement(tag);
 
-  if (className) {
-    element.className = className;
-  }
-
-  if (text !== undefined) {
-    element.textContent = text;
-  }
+  if (className) element.className = className;
+  if (text !== undefined) element.textContent = text;
 
   return element;
 }
@@ -346,6 +284,7 @@ function createLocationCard(location) {
   const country = getCountry(location);
 
   const primary = state.primaryName === "city" ? city : region || city;
+
   const secondary = state.primaryName === "city"
     ? [region, country].filter(Boolean).join(", ")
     : [city, country].filter(Boolean).join(", ");
@@ -361,47 +300,55 @@ function createLocationCard(location) {
 
   const dragButton = createElement("button", "card-action drag-handle", "⠿");
   dragButton.type = "button";
-  dragButton.title = "Перетягни картку, щоб змінити порядок";
+  dragButton.title = "Перетягни, щоб змінити порядок";
   dragButton.setAttribute("aria-label", "Перемістити місто");
   dragButton.draggable = true;
 
   const removeButton = createElement("button", "card-action", "×");
   removeButton.type = "button";
-  removeButton.title = "Видалити локацію";
+  removeButton.title = "Видалити місто";
   removeButton.setAttribute("aria-label", `Видалити ${city}`);
 
-  removeButton.addEventListener("click", () => {
-    removeLocation(location.id);
-  });
+  removeButton.addEventListener("click", () => removeLocation(location.id));
 
   actions.append(dragButton, removeButton);
   top.append(identity, actions);
 
-  const clock = createElement("strong", "location-clock", formatTime(getTimeZone(location)));
+  const clock = createElement(
+    "strong",
+    "location-clock",
+    formatTime(getTimeZone(location))
+  );
   clock.dataset.timeZone = getTimeZone(location);
 
-  const date = createElement("span", "location-date", formatDate(getTimeZone(location)));
+  const date = createElement(
+    "span",
+    "location-date",
+    formatDate(getTimeZone(location))
+  );
   date.dataset.dateTimeZone = getTimeZone(location);
 
   const footer = createElement("div", "location-footer");
 
-  const zone = createElement("span", "time-zone-label", getTimeZoneName(getTimeZone(location)));
-
-  const difference = getDayDifference(getTimeZone(location));
+  const zone = createElement(
+    "span",
+    "time-zone-label",
+    getTimeZoneName(getTimeZone(location))
+  );
 
   const dayLabel = createElement(
     "span",
     "day-difference",
-    getDayDifferenceLabel(difference)
+    getDayDifferenceLabel(getDayDifference(getTimeZone(location)))
   );
 
   footer.append(zone, dayLabel);
   card.append(top, clock, date, footer);
 
   dragButton.addEventListener("dragstart", event => {
-    if (state.sort !== "manual" || elements.searchInput.value.trim() || state.timeFilter !== "all") {
+    if (state.sort !== "manual" || elements.searchInput.value.trim()) {
       event.preventDefault();
-      showStatus("Для зміни порядку спочатку вимкни пошук і фільтри та вибери «Мій порядок».");
+      showStatus("Для перетягування вибери «Мій порядок» та очисти пошук.");
       return;
     }
 
@@ -411,7 +358,7 @@ function createLocationCard(location) {
   });
 
   card.addEventListener("dragover", event => {
-    if (state.sort !== "manual") return;
+    if (state.sort !== "manual" || elements.searchInput.value.trim()) return;
 
     event.preventDefault();
     card.classList.add("drag-over");
@@ -422,7 +369,7 @@ function createLocationCard(location) {
   });
 
   card.addEventListener("drop", event => {
-    if (state.sort !== "manual") return;
+    if (state.sort !== "manual" || elements.searchInput.value.trim()) return;
 
     event.preventDefault();
 
@@ -453,11 +400,8 @@ function renderLocations() {
     elements.locationsList.appendChild(createLocationCard(location));
   }
 
-  elements.locationCount.textContent =
-    `${visibleLocations.length} із ${state.ids.length} локацій`;
-
+  elements.locationCount.textContent = String(visibleLocations.length);
   elements.emptyState.hidden = visibleLocations.length > 0;
-
   elements.clearSearch.hidden = !elements.searchInput.value;
 
   document.querySelectorAll(".view-button").forEach(button => {
@@ -492,17 +436,13 @@ function updateClocks() {
   document.querySelectorAll("[data-date-time-zone]").forEach(element => {
     element.textContent = formatDate(element.dataset.dateTimeZone);
   });
-
-  renderLocations();
 }
 
 function addLocation(id) {
-  if (!locations.some(location => location.id === id)) {
-    return;
-  }
+  if (!locations.some(location => location.id === id)) return;
 
   if (state.ids.includes(id)) {
-    showStatus("Ця локація вже додана.");
+    showStatus("Це місто вже є у твоєму списку.");
     return;
   }
 
@@ -512,7 +452,7 @@ function addLocation(id) {
   renderLocations();
   renderCatalog();
 
-  showStatus("Локацію успішно додано.");
+  showStatus("Місто додано.");
 }
 
 function removeLocation(id) {
@@ -524,20 +464,16 @@ function removeLocation(id) {
   renderLocations();
   renderCatalog();
 
-  showStatus(`${getCity(location || {})} видалено зі списку.`);
+  showStatus(`${getCity(location)} видалено зі списку.`);
 }
 
 function moveLocation(draggedId, targetId) {
-  if (!draggedId || draggedId === targetId) {
-    return;
-  }
+  if (!draggedId || draggedId === targetId) return;
 
   const fromIndex = state.ids.indexOf(draggedId);
   const toIndex = state.ids.indexOf(targetId);
 
-  if (fromIndex < 0 || toIndex < 0) {
-    return;
-  }
+  if (fromIndex < 0 || toIndex < 0) return;
 
   const [moved] = state.ids.splice(fromIndex, 1);
   state.ids.splice(toIndex, 0, moved);
@@ -548,38 +484,35 @@ function moveLocation(draggedId, targetId) {
 
 function resetOrder() {
   state.sort = "manual";
-  state.timeFilter = "all";
+  state.ids = [...defaultIds];
 
   elements.sortSelect.value = "manual";
-  elements.timeFilter.value = "all";
-
-  state.ids = [...defaultIds];
 
   saveSettings();
   renderLocations();
 
-  showStatus("Порядок повернуто до початкового.");
+  showStatus("Початковий порядок відновлено.");
 }
 
 function resetFilters() {
   elements.searchInput.value = "";
-  elements.timeFilter.value = "all";
   elements.sortSelect.value = "manual";
   elements.primaryNameSelect.value = "city";
 
-  state.timeFilter = "all";
   state.sort = "manual";
   state.primaryName = "city";
 
   saveSettings();
   renderLocations();
 
-  showStatus("Фільтри скинуто.");
+  showStatus("Налаштування відображення скинуто.");
 }
 
 function applyTheme() {
   document.body.classList.toggle("dark-theme", state.theme === "dark");
+
   elements.themeToggle.textContent = state.theme === "dark" ? "☾" : "☼";
+
   elements.themeToggle.setAttribute(
     "aria-label",
     state.theme === "dark" ? "Увімкнути світлу тему" : "Увімкнути темну тему"
@@ -619,20 +552,17 @@ function renderCatalog() {
   });
 
   elements.catalogList.replaceChildren();
-
-  elements.catalogCount.textContent = `${filtered.length} доступно`;
+  elements.catalogCount.textContent = `${filtered.length} міст`;
 
   if (filtered.length === 0) {
     elements.catalogList.appendChild(
       createElement("div", "catalog-empty", "Нічого не знайдено.")
     );
-
     return;
   }
 
   const sorted = [...filtered].sort((a, b) => {
     const regionCompare = getRegion(a).localeCompare(getRegion(b), "uk");
-
     return regionCompare || getCity(a).localeCompare(getCity(b), "uk");
   });
 
@@ -642,16 +572,14 @@ function renderCatalog() {
     const region = getRegion(location);
 
     if (region !== previousRegion) {
-      const heading = createElement(
-        "div",
-        "catalog-region-heading",
-        `${region || getCountry(location)}`
+      elements.catalogList.appendChild(
+        createElement(
+          "div",
+          "catalog-region-heading",
+          region || getCountry(location)
+        )
       );
 
-      heading.style.cssText =
-        "padding:13px 10px 5px;color:var(--accent);font-size:11px;font-weight:800;";
-
-      elements.catalogList.appendChild(heading);
       previousRegion = region;
     }
 
@@ -659,7 +587,6 @@ function renderCatalog() {
     item.type = "button";
 
     const flag = createElement("span", "catalog-item-flag", getFlag(location));
-
     const info = createElement("span", "catalog-item-info");
 
     info.append(
@@ -680,18 +607,15 @@ function renderCatalog() {
     );
 
     item.disabled = alreadyAdded;
-
     item.append(flag, info, status);
 
-    item.addEventListener("click", () => {
-      addLocation(location.id);
-    });
+    item.addEventListener("click", () => addLocation(location.id));
 
     elements.catalogList.appendChild(item);
   }
 }
 
-/* Пошук і фільтри */
+/* Пошук */
 
 elements.searchInput.addEventListener("input", renderLocations);
 
@@ -701,13 +625,7 @@ elements.clearSearch.addEventListener("click", () => {
   elements.searchInput.focus();
 });
 
-elements.timeFilter.value = state.timeFilter;
-
-elements.timeFilter.addEventListener("change", () => {
-  state.timeFilter = elements.timeFilter.value;
-  saveSettings();
-  renderLocations();
-});
+/* Сортування */
 
 elements.sortSelect.value = state.sort;
 
@@ -717,6 +635,8 @@ elements.sortSelect.addEventListener("change", () => {
   renderLocations();
 });
 
+/* Основна назва */
+
 elements.primaryNameSelect.value = state.primaryName;
 
 elements.primaryNameSelect.addEventListener("change", () => {
@@ -725,10 +645,12 @@ elements.primaryNameSelect.addEventListener("change", () => {
   renderLocations();
 });
 
+/* Кнопки скидання */
+
 elements.resetFiltersButton.addEventListener("click", resetFilters);
 elements.resetOrderButton.addEventListener("click", resetOrder);
 
-/* Перемикання карток і списку */
+/* Перемикання вигляду */
 
 document.querySelectorAll(".view-button").forEach(button => {
   button.addEventListener("click", () => {
@@ -748,12 +670,11 @@ elements.themeToggle.addEventListener("click", () => {
   saveSettings();
 });
 
-/* Додавання міст */
+/* Каталог міст */
 
 elements.addLocationButton.addEventListener("click", openCatalog);
 elements.emptyAddButton.addEventListener("click", openCatalog);
 elements.closeDialogButton.addEventListener("click", closeCatalog);
-
 elements.catalogSearch.addEventListener("input", renderCatalog);
 
 elements.locationDialog.addEventListener("click", event => {
@@ -762,18 +683,16 @@ elements.locationDialog.addEventListener("click", event => {
   }
 });
 
-/* Ініціалізація */
+/* Запуск */
 
 function init() {
   if (!locations.length) {
-    showStatus("Не знайдено список міст. Перевір файл locations.js.");
+    showStatus("Не вдалося завантажити міста. Перевір locations.js.");
     return;
   }
 
   applyTheme();
-
   renderLocations();
-
   updateClocks();
 
   window.setInterval(updateClocks, 1000);
